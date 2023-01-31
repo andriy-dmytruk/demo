@@ -1,0 +1,78 @@
+plugins {
+    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("io.micronaut.application") version "3.7.0"
+}
+
+version = "0.1"
+group = "com.example"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("jakarta.annotation:jakarta.annotation-api")
+    runtimeOnly("org.slf4j:slf4j-simple")
+    implementation("io.micronaut:micronaut-validation")
+
+    implementation("io.micronaut.oraclecloud:micronaut-oraclecloud-function")
+
+    implementation("com.fnproject.fn:api")
+
+    runtimeOnly("com.fnproject.fn:runtime")
+
+    testImplementation("com.fnproject.fn:testing-junit4")
+
+    testImplementation("io.micronaut:micronaut-http-client")
+
+}
+
+
+application {
+    mainClass.set("com.fnproject.fn.runtime.EntryPoint")
+}
+java {
+    sourceCompatibility = JavaVersion.toVersion("11")
+    targetCompatibility = JavaVersion.toVersion("11")
+}
+
+tasks {
+    dockerfileNative {
+        args("-XX:MaximumHeapSizePercent=80")
+        buildStrategy.set(io.micronaut.gradle.docker.DockerBuildStrategy.ORACLE_FUNCTION)
+        defaultCommand.set("com.example.Function::handleRequest")
+    }
+
+    dockerfile {
+        buildStrategy.set(io.micronaut.gradle.docker.DockerBuildStrategy.ORACLE_FUNCTION)
+        defaultCommand.set("com.example.Function::handleRequest")
+    }
+    dockerBuild {
+        images = ["[REGION].ocir.io/[TENANCY]/[REPO]/$project.name:$project.version"]
+    }
+
+    dockerBuildNative {
+        images = ["[REGION].ocir.io/[TENANCY]/[REPO]/$project.name-native:$project.version"]
+    }
+}
+graalvmNative.toolchainDetection = false
+graalvmNative {
+    binaries.configureEach {
+        buildArgs.addAll(
+             "-H:+StaticExecutableWithDynamicLibC",
+             "-Dfn.handler=com.example.Function::handleRequest",
+             "--initialize-at-build-time=com.example"
+        )
+    }
+}
+micronaut {
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("com.example.*")
+    }
+}
+
+
+
