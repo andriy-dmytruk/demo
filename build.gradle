@@ -67,6 +67,7 @@ graalvmNative {
     }
 }
 micronaut {
+    runtime("lambda_provided")
     testRuntime("junit5")
     processing {
         incremental(true)
